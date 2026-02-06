@@ -1,22 +1,17 @@
 {
-  "name": "RAI Tutor AI",
+  "name": "RAI Tutor",
   "short_name": "RAI Tutor",
-  "start_url": "index.html",
+  "description": "Smart AI Learning App for Students",
+  "start_url": "/virtual-ar-book/",
   "display": "standalone",
   "background_color": "#FFFFFF",
-  "theme_color": "#FFD700",
+  "theme_color": "#00BFFF",
   "icons": [
     {
-      "src": "1000081883.jpg",
+      "src": "https://rajusir9692-create.github.io/virtual-ar-book/icon.png",
       "sizes": "512x512",
-      "type": "image/jpeg",
-      "purpose": "any"
-    },
-    {
-      "src": "1000081883.jpg",
-      "sizes": "512x512",
-      "type": "image/jpeg",
-      "purpose": "maskable"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
