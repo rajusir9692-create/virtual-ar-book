@@ -2,52 +2,86 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Santu AI: Real AR Book</title>
+    <title>Rajesh AI: Professional AR Study</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
     <style>
-        .menu { position: absolute; bottom: 20px; width: 100%; text-align: center; z-index: 10; }
-        button { padding: 12px 20px; margin: 5px; border-radius: 8px; border: none; background: #FFD700; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        #file-input { position: absolute; top: 20px; left: 20px; z-index: 10; background: white; padding: 10px; border-radius: 8px; }
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Arial, sans-serif; }
+        
+        /* UI Panel - Click par dikhega */
+        #ui-overlay { position: absolute; bottom: 20px; width: 100%; text-align: center; z-index: 1000; display: none; }
+        .btn { padding: 12px 18px; margin: 5px; border-radius: 50px; border: none; background: linear-gradient(45deg, #FFD700, #FFA500); font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.4); color: #222; }
+        
+        /* Premium/Income Lock */
+        #premium-lock { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; display: none; color: white; text-align: center; padding-top: 20%; }
+        
+        /* Rajesh AI Chat Box */
+        #ai-panel { position: absolute; right: 10px; top: 50px; width: 260px; background: white; border-radius: 15px; padding: 15px; display: none; z-index: 1500; border: 2px solid #FFA500; box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+        
+        #file-input { position: absolute; top: 15px; left: 15px; z-index: 1000; background: rgba(255,255,255,0.9); padding: 8px; border-radius: 10px; border: 1px solid #ddd; }
+        textarea { width: 90%; border-radius: 8px; height: 70px; padding: 10px; border: 1px solid #ccc; margin-top: 5px; font-family: inherit; }
     </style>
 </head>
-<body style="margin: 0; overflow: hidden;">
+<body onclick="toggleUI()">
 
     <div id="file-input">
-        <label><b>Open Your PDF Book:</b></label><br>
-        <input type="file" id="pdfFile" accept="application/pdf">
+        <label style="font-size: 12px; font-weight: bold;">Upload Economics PDF:</label><br>
+        <input type="file" id="pdfLoader" accept="application/pdf">
     </div>
 
-    <div class="menu">
-        <button onclick="changePage(-2)">⬅️ PREVIOUS</button>
-        <button onclick="changePage(2)">NEXT ➡️</button>
-        <button style="background: #00BFFF;" onclick="alert('Santu AI: Analyzing this page for your Economics exam...')">SANTU AI HELP</button>
+    <div id="premium-lock">
+        <h1 style="color: #FFD700;">Rajesh AI Premium</h1>
+        <p>Aage padhne ke liye aur UPSC/OPSC doubts ke liye <br> subscription lein.</p>
+        <button class="btn" style="padding: 20px 40px; font-size: 18px;" onclick="alert('Redirecting to Payment Gateway...')">ACTIVATE NOW (₹199)</button>
+    </div>
+
+    <div id="ai-panel">
+        <h3 style="margin:0; color: #FFA500;">Rajesh AI Tutor</h3>
+        <p id="selected-info" style="font-size: 11px; color: #555; background: #f9f9f9; padding: 5px; border-radius: 5px; margin: 10px 0;">Selection: Page context ready.</p>
+        <textarea id="ai-query" placeholder="Ask about Average Revenue, Inflation, etc..."></textarea>
+        <button class="btn" style="width:100%; margin-top:10px;" onclick="askRajeshAI()">GET ANSWER</button>
+    </div>
+
+    <div id="ui-overlay">
+        <button class="btn" onclick="changePage(-2)">⬅️ PREV</button>
+        <button class="btn" onclick="changePage(2)">NEXT ➡️</button>
+        <button class="btn" style="background: #00BFFF; color: white;" onclick="showAIPanel()">💡 RAJESH AI</button>
+        <button class="btn" style="background: #32CD32; color: white;" onclick="saveProgress()">📌 SAVE</button>
     </div>
 
     <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
-        <a-marker preset="hiro">
-            <a-plane id="leftPage" position="-0.52 0 0" rotation="-90 0 0" width="1" height="1.4" material="side: double; color: #ffffff"></a-plane>
-            <a-plane id="rightPage" position="0.52 0 0" rotation="-90 0 0" width="1" height="1.4" material="side: double; color: #ffffff"></a-plane>
-            <a-box position="0 0 0" rotation="-90 0 0" width="0.04" height="1.4" depth="0.1" material="color: #333"></a-box>
-        </a-marker>
+        <a-entity id="book-anchor" position="0 0 -2.5" rotation="-15 0 0">
+            <a-box id="leftP" position="-0.55 0 0" width="1" height="1.4" depth="0.04" material="color: white"></a-box>
+            <a-box id="rightP" position="0.55 0 0" width="1" height="1.4" depth="0.04" material="color: white"></a-box>
+        </a-entity>
         <a-entity camera></a-entity>
     </a-scene>
 
     <script>
         const pdfjsLib = window['pdfjs-dist/build/pdf'];
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js';
+        
+        let pdfDoc = null, pageNum = 1, isPaid = false;
 
-        let pdfDoc = null;
-        let pageNum = 1;
+        function toggleUI() {
+            let ui = document.getElementById('ui-overlay');
+            if (ui.style.display === 'block') {
+                ui.style.display = 'none';
+            } else {
+                ui.style.display = 'block';
+            }
+        }
 
-        document.getElementById('pdfFile').onchange = function(e) {
+        document.getElementById('pdfLoader').onchange = function(e) {
             let file = e.target.files[0];
             let reader = new FileReader();
             reader.onload = function() {
                 let typedarray = new Uint8Array(this.result);
                 pdfjsLib.getDocument(typedarray).promise.then(pdf => {
                     pdfDoc = pdf;
+                    let saved = localStorage.getItem('rajesh_ai_progress');
+                    if(saved) pageNum = parseInt(saved);
                     renderBook();
                 });
             };
@@ -55,19 +89,22 @@
         };
 
         function renderPage(num, elementId) {
-            if (num > pdfDoc.numPages || num < 1) {
-                document.getElementById(elementId).setAttribute('visible', 'false');
-                return;
-            }
-            document.getElementById(elementId).setAttribute('visible', 'true');
+            if (!pdfDoc || num > pdfDoc.numPages || num < 1) return;
             
+            // Income Logic: Lock after Page 5
+            if (num > 5 && !isPaid) {
+                document.getElementById('premium-lock').style.display = 'block';
+                return;
+            } else {
+                document.getElementById('premium-lock').style.display = 'none';
+            }
+
             pdfDoc.getPage(num).then(page => {
-                let viewport = page.getViewport({scale: 2.0}); // High resolution for clear text
+                let viewport = page.getViewport({scale: 2.5});
                 let canvas = document.createElement('canvas');
                 let ctx = canvas.getContext('2d');
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
-
+                canvas.height = viewport.height; canvas.width = viewport.width;
+                
                 page.render({canvasContext: ctx, viewport: viewport}).promise.then(() => {
                     let texture = new THREE.CanvasTexture(canvas);
                     let mesh = document.getElementById(elementId).getObject3D('mesh');
@@ -77,10 +114,7 @@
             });
         }
 
-        function renderBook() {
-            renderPage(pageNum, 'leftPage');
-            renderPage(pageNum + 1, 'rightPage');
-        }
+        function renderBook() { renderPage(pageNum, 'leftP'); renderPage(pageNum + 1, 'rightP'); }
 
         function changePage(offset) {
             if (!pdfDoc) return;
@@ -88,6 +122,24 @@
                 pageNum += offset;
                 renderBook();
             }
+        }
+
+        function showAIPanel() {
+            let panel = document.getElementById('ai-panel');
+            panel.style.display = (panel.style.display === 'block') ? 'none' : 'block';
+            document.getElementById('selected-info').innerText = "Rajesh AI reading: Page " + pageNum + " & " + (pageNum+1);
+        }
+
+        function askRajeshAI() {
+            let q = document.getElementById('ai-query').value;
+            if(!q) return alert("Kuch toh puchiye!");
+            // Mock answer - Asli API yahan lagegi
+            alert("Rajesh AI Tutor says: Based on your PDF context, " + q + " is an important topic for UPSC Economics. Please connect API for detailed answer.");
+        }
+
+        function saveProgress() {
+            localStorage.setItem('rajesh_ai_progress', pageNum);
+            alert("Progress saved by Rajesh AI at Page " + pageNum);
         }
     </script>
 </body>
