@@ -1,62 +1,30 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Rajesh AI: Knowledge. Innovation. Success.</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAI Tutor: Smart AI Learning</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
         #app-header { position: absolute; top: 0; width: 100%; text-align: center; z-index: 1000; background: white; padding: 10px; border-bottom: 2px solid #FFD700; }
-        .logo-img { width: 70px; }
-        
-        /* UI Panels */
+        .logo-img { width: 80px; height: 80px; border-radius: 10px; object-fit: cover; }
         #ui-overlay { position: absolute; bottom: 20px; width: 100%; text-align: center; z-index: 1000; display: none; }
-        .btn { padding: 12px 15px; margin: 5px; border-radius: 25px; border: none; background: gold; font-weight: bold; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
-        
-        /* Subscription Locks */
-        .lock-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; display: none; color: white; text-align: center; padding-top: 25%; }
-        
-        /* AI Features Panel */
-        #ai-panel { position: absolute; right: 10px; top: 120px; width: 260px; background: white; border-radius: 15px; padding: 15px; display: none; z-index: 1500; border: 2px solid #FFA500; }
-        #selected-box { font-size: 11px; background: #f0f0f0; padding: 8px; border-radius: 5px; margin: 10px 0; max-height: 80px; overflow-y: auto; }
+        .btn { padding: 12px 15px; margin: 5px; border-radius: 25px; border: none; background: gold; font-weight: bold; cursor: pointer; }
     </style>
 </head>
-<body onclick="toggleUI()">
-
+<body>
     <div id="app-header">
-        <img src="1770373537747.png" class="logo-img" alt="Rajesh AI">
-        <p style="margin:2px; font-weight:bold;">Rajesh AI Tutor</p>
+        <img src="1000081883.jpg" class="logo-img" alt="RAI Tutor Logo">
+        <p style="margin:2px; font-weight:bold;">RAI Tutor</p>
         <input type="file" id="pdfLoader" accept="application/pdf">
     </div>
-
-    <div id="standard-lock" class="lock-screen">
-        <h2 style="color:gold;">Rajesh AI: Free Trial Ended</h2>
-        <p>1 Month Free trial khatam ho gaya hai.<br>Continue padhne ke liye ₹10/month pay karein.</p>
-        <button class="btn" onclick="pay('10', 'Standard Reading')">PAY ₹10 VIA UPI</button>
-    </div>
-
-    <div id="notes-lock" class="lock-screen">
-        <h2 style="color:deepskyblue;">AI Smart Notes Premium</h2>
-        <p>24-Hour AI Trial ended.<br>Full Page Copy & Notes ke liye ₹30/month pay karein.</p>
-        <button class="btn" style="background:deepskyblue; color:white;" onclick="pay('30', 'AI Notes Plan')">PAY ₹30 VIA UPI</button>
-    </div>
-
-    <div id="ai-panel">
-        <h3 style="margin:0; color:#FFA500;">Rajesh AI Tutor</h3>
-        <div id="selected-box">Text selected yahan dikhega...</div>
-        <button class="btn" style="width:100%; font-size:12px;" onclick="copyFullPage()">📄 COPY FULL PAGE</button>
-        <button class="btn" style="width:100%; font-size:12px; background:#32CD32; color:white;" onclick="makeNotes()">📝 CREATE AI NOTES</button>
-        <textarea id="ai-query" placeholder="Ya manual doubt puchiye..." style="width:92%; margin-top:10px; height:50px;"></textarea>
-        <button class="btn" style="width:100%;" onclick="askAI()">ASK RAJESH AI</button>
-    </div>
-
     <div id="ui-overlay">
         <button class="btn" onclick="changePage(-2)">PREV</button>
         <button class="btn" onclick="changePage(2)">NEXT</button>
-        <button class="btn" style="background:#00BFFF; color:white;" onclick="showAIPanel()">💡 AI TOOLS</button>
     </div>
-
     <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
         <a-entity id="book-anchor" position="0 0 -2.5">
             <a-box id="leftP" position="-0.55 0 0" width="1" height="1.4" depth="0.04" material="color: white"></a-box>
@@ -64,45 +32,25 @@
         </a-entity>
         <a-entity camera></a-entity>
     </a-scene>
-
     <script>
         let pdfDoc = null, pageNum = 1;
-        let installDate = localStorage.getItem('installDate') || Date.now();
-        localStorage.setItem('installDate', installDate);
-
-        // Feature Access Logic
-        let isStandardPaid = localStorage.getItem('standardPaid') === 'true';
-        let isNotesPaid = localStorage.getItem('notesPaid') === 'true';
-
-        function toggleUI() {
-            let ui = document.getElementById('ui-overlay');
-            ui.style.display = (ui.style.display === 'block') ? 'none' : 'block';
-        }
-
         document.getElementById('pdfLoader').onchange = function(e) {
             let file = e.target.files[0];
             let reader = new FileReader();
             reader.onload = function() {
                 let typedarray = new Uint8Array(this.result);
                 pdfjsLib.getDocument(typedarray).promise.then(pdf => {
-                    pdfDoc = pdf; renderBook();
+                    pdfDoc = pdf;
+                    document.getElementById('ui-overlay').style.display = 'block';
+                    renderBook();
                 });
             };
             reader.readAsArrayBuffer(file);
         };
-
         function renderPage(num, elementId) {
             if (!pdfDoc || num > pdfDoc.numPages || num < 1) return;
-
-            // Check 1 Month Free Trial (Standard)
-            let oneMonth = 30 * 24 * 60 * 60 * 1000;
-            if (Date.now() - installDate > oneMonth && !isStandardPaid) {
-                document.getElementById('standard-lock').style.display = 'block';
-                return;
-            }
-
             pdfDoc.getPage(num).then(page => {
-                let viewport = page.getViewport({scale: 2.5});
+                let viewport = page.getViewport({scale: 2});
                 let canvas = document.createElement('canvas');
                 let ctx = canvas.getContext('2d');
                 canvas.height = viewport.height; canvas.width = viewport.width;
@@ -113,35 +61,8 @@
                 });
             });
         }
-
         function renderBook() { renderPage(pageNum, 'leftP'); renderPage(pageNum + 1, 'rightP'); }
-        function changePage(offset) { pageNum += offset; renderBook(); }
-
-        function showAIPanel() {
-            let panel = document.getElementById('ai-panel');
-            panel.style.display = (panel.style.display === 'block') ? 'none' : 'block';
-        }
-
-        function copyFullPage() {
-            // Check 24h Trial for AI
-            let oneDay = 24 * 60 * 60 * 1000;
-            if (Date.now() - installDate > oneDay && !isNotesPaid) {
-                document.getElementById('notes-lock').style.display = 'block';
-                return;
-            }
-            document.getElementById('selected-box').innerText = "FULL PAGE " + pageNum + " COPIED! Ready for Notes.";
-        }
-
-        function makeNotes() {
-            alert("Rajesh AI is creating smart notes for Page " + pageNum + "... (Success!)");
-        }
-
-        function pay(amount, plan) {
-            let upiId = "RAKESH_UPI_ID@okicici"; // APNA ID YAHAN DALO
-            window.location.href = `upi://pay?pa=${upiId}&pn=RajeshAI&am=${amount}&cu=INR&tn=Payment for ${plan}`;
-        }
-
-        function askAI() { alert("Rajesh AI analyzing..."); }
+        function changePage(offset) { if(pdfDoc) { pageNum += offset; renderBook(); } }
     </script>
 </body>
 </html>
