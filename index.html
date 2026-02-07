@@ -1,16 +1,18 @@
-<link rel="icon" type="image/png" href="icon.png">
-<link rel="apple-touch-icon" href="icon.png">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="hi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AR Book</title><link rel="icon" type="image/png" href="icon.png">
-<link rel="apple-touch-icon" href="icon.png">
+    <title>AR Book</title>
+    
+    <link rel="icon" type="image/png" href="icon.png">
+    <link rel="apple-touch-icon" href="icon.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link rel="manifest" href="manifest.json">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+
     <style>
         :root { --primary: #008BFF; }
         body { font-family: sans-serif; margin: 0; background: #1a1a1a; color: white; overflow: hidden; touch-action: none; }
@@ -39,7 +41,7 @@
 <audio id="flipSound" src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3" preload="auto"></audio>
 
 <div id="home-screen">
-    <img src="icon.png" style="width: 100px; border-radius: 20px; margin-bottom: 20px;">
+    <img src="icon.png" style="width: 120px; border-radius: 50%; border: 4px solid var(--primary); margin-bottom: 20px;">
     <button class="main-btn" onclick="document.getElementById('pdf-file').click()">GO TO PDF</button>
     <input type="file" id="pdf-file" accept=".pdf" style="display:none" onchange="initPDF(event)">
     <p style="margin-top:15px; font-size:14px; color:#777;">Apni kitab chunein aur padhna shuru karein</p>
@@ -108,13 +110,13 @@
         document.getElementById('current').textContent = num;
     }
 
-    // Swipe Feature (Left/Right)
+    // Swipe Feature
     const viewer = document.getElementById('reader-mode');
     viewer.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, false);
     viewer.addEventListener('touchend', e => {
         let endX = e.changedTouches[0].clientX;
-        if (startX - endX > 50) movePage('next'); // Swipe Left -> Next
-        else if (endX - startX > 50) movePage('prev'); // Swipe Right -> Prev
+        if (startX - endX > 50) movePage('next'); // Next
+        else if (endX - startX > 50) movePage('prev'); // Prev
     }, false);
 
     function movePage(dir) {
@@ -130,18 +132,15 @@
         const val = parseInt(document.getElementById('jumpInput').value);
         if (val > 0 && val <= pdfDoc.numPages) {
             pageNum = val; playFlip(); renderPage(pageNum);
-        } else {
-            alert("Sahi page number daalein (1 se " + pdfDoc.numPages + ")");
         }
     }
 
     function playFlip() {
         const s = document.getElementById('flipSound');
         s.currentTime = 0;
-        s.play().catch(() => {}); // Play only if user interacted
+        s.play().catch(() => {});
     }
 
-    // Tap for Menu
     document.getElementById('canvas-wrapper').addEventListener('click', (e) => {
         const menu = document.getElementById('menu');
         menu.style.display = 'block';
@@ -149,7 +148,6 @@
         menu.style.top = Math.min(e.clientY, window.innerHeight - 200) + 'px';
     });
 
-    // Hide Menu on click outside
     window.onclick = (e) => {
         if (!e.target.closest('#canvas-wrapper') && !e.target.closest('#menu')) {
             document.getElementById('menu').style.display = 'none';
@@ -158,4 +156,3 @@
 </script>
 </body>
 </html>
-
