@@ -2,46 +2,51 @@
 <html lang="hi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AR Book</title>
-    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@2.16.105/build/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <style>
         :root { --primary: #008BFF; }
-        body { font-family: sans-serif; margin: 0; background: #2c2c2c; color: white; overflow: hidden; }
-        header { background: var(--primary); padding: 10px; display: flex; justify-content: space-between; align-items: center; }
-        #home-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 90vh; background: #f4f4f4; color: black; }
-        #reader-mode { display: none; position: fixed; inset: 0; background: #333; z-index: 200; }
+        body { font-family: sans-serif; margin: 0; background: #1a1a1a; color: white; overflow: hidden; touch-action: none; }
         
-        /* Page Jumper Style */
-        .top-bar { position: fixed; top: 0; width: 100%; background: rgba(0,0,0,0.9); padding: 10px; display: flex; justify-content: space-around; align-items: center; z-index: 205; }
-        .jump-input { width: 60px; padding: 5px; border-radius: 5px; border: none; text-align: center; }
+        /* Top Navigation Bar */
+        .top-nav { position: fixed; top: 0; width: 100%; background: rgba(0,0,0,0.85); padding: 10px 0; display: flex; justify-content: space-around; align-items: center; z-index: 1000; border-bottom: 1px solid #333; }
+        .page-box { width: 50px; padding: 5px; border-radius: 4px; border: 1px solid var(--primary); background: #222; color: white; text-align: center; }
+        .go-btn { background: var(--primary); color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; }
         
-        /* Reader Canvas */
-        #canvas-wrapper { height: 100vh; display: flex; align-items: center; justify-content: center; touch-action: none; }
-        canvas { max-width: 100%; max-height: 85vh; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        /* Home Screen */
+        #home-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #f8f9fa; color: #333; z-index: 500; position: relative; }
+        .main-btn { background: var(--primary); color: white; padding: 20px 50px; border-radius: 50px; font-size: 22px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.2); cursor: pointer; }
 
-        /* Floating Menu */
-        #floating-options { display: none; position: fixed; background: white; color: black; border-radius: 12px; padding: 10px; z-index: 300; min-width: 160px; box-shadow: 0 5px 20px rgba(0,0,0,0.3); }
-        .opt-btn { display: block; width: 100%; padding: 10px; border: none; background: none; text-align: left; border-bottom: 1px solid #eee; cursor: pointer; }
+        /* PDF Viewer Container */
+        #reader-mode { display: none; position: fixed; inset: 0; background: #222; overflow: hidden; }
+        #canvas-wrapper { height: 100vh; width: 100vw; display: flex; align-items: center; justify-content: center; overflow: auto; }
+        canvas { max-width: 100%; max-height: 90vh; box-shadow: 0 0 30px rgba(0,0,0,0.7); background: white; }
+
+        /* Floating Menu on Tap */
+        #menu { display: none; position: fixed; background: white; color: black; border-radius: 12px; padding: 8px; z-index: 2000; min-width: 180px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .menu-item { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 14px; }
     </style>
 </head>
 <body>
 
-<audio id="pageSound" src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3" preload="auto"></audio>
+<audio id="flipSound" src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3" preload="auto"></audio>
 
 <div id="home-screen">
-    <button onclick="document.getElementById('fileInput').click()" style="background:var(--primary); color:white; padding:20px 40px; border-radius:50px; border:none; font-size:20px;">GO TO PDF</button>
-    <input type="file" id="fileInput" accept="application/pdf" style="display:none" onchange="handleFile(event)">
+    <img src="icon.png" style="width: 100px; border-radius: 20px; margin-bottom: 20px;">
+    <button class="main-btn" onclick="document.getElementById('pdf-file').click()">GO TO PDF</button>
+    <input type="file" id="pdf-file" accept=".pdf" style="display:none" onchange="initPDF(event)">
+    <p style="margin-top:15px; font-size:14px; color:#777;">Apni kitab chunein aur padhna shuru karein</p>
 </div>
 
 <div id="reader-mode">
-    <div class="top-bar">
-        <span>Pg: <span id="cur_pg">1</span> / <span id="tot_pg">0</span></span>
+    <div class="top-nav">
+        <span style="font-size:14px;">📄 <span id="current">1</span> / <span id="total">0</span></span>
         <div>
-            <input type="number" id="jump_num" class="jump-input" placeholder="No.">
-            <button onclick="jumpToPage()" style="background:var(--primary); color:white; border:none; padding:5px; border-radius:5px;">Go</button>
+            <input type="number" id="jumpInput" class="page-box" placeholder="No.">
+            <button class="go-btn" onclick="jumpToPage()">GO</button>
         </div>
-        <button onclick="location.reload()" style="background:red; color:white; border:none; padding:5px 10px; border-radius:5px;">Close</button>
+        <button onclick="location.reload()" style="background:#ff4444; color:white; border:none; padding:6px 12px; border-radius:4px;">CLOSE</button>
     </div>
 
     <div id="canvas-wrapper">
@@ -49,100 +54,102 @@
     </div>
 </div>
 
-<div id="floating-options">
-    <button class="opt-btn" onclick="alert('Gemini AI creating notes...')">✨ Gemini AI Notes</button>
-    <button class="opt-btn" onclick="alert('Full Page Copied')">📄 Full Page Copy</button>
-    <button class="opt-btn" onclick="alert('Manual Copy ON')">🖐️ Manual Copy</button>
+<div id="menu">
+    <div class="menu-item" onclick="alert('Gemini AI is generating smart notes...')">✨ Gemini AI Notes</div>
+    <div class="menu-item" onclick="alert('Full Page Content Copied!')">📄 Full Page Copy</div>
+    <div class="menu-item" onclick="alert('Manual selection mode activated')">🖐️ Manual Selection</div>
 </div>
 
 <script>
     const pdfjsLib = window['pdfjs-dist/build/pdf'];
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@2.16.105/build/pdf.worker.min.js';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-    let pdfDoc = null, pageNum = 1, isRendering = false;
-    let touchStartX = 0, touchEndX = 0;
+    let pdfDoc = null, pageNum = 1, rendering = false;
+    let startX = 0;
 
-    function handleFile(e) {
+    async function initPDF(e) {
         const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function() {
-                const data = new Uint8Array(this.result);
-                pdfjsLib.getDocument(data).promise.then(pdf => {
-                    pdfDoc = pdf;
-                    document.getElementById('tot_pg').textContent = pdf.numPages;
-                    document.getElementById('home-screen').style.display = 'none';
-                    document.getElementById('reader-mode').style.display = 'block';
-                    renderPage(pageNum);
-                });
-            };
-            reader.readAsArrayBuffer(file);
-        }
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = async function() {
+            const data = new Uint8Array(this.result);
+            try {
+                pdfDoc = await pdfjsLib.getDocument(data).promise;
+                document.getElementById('total').textContent = pdfDoc.numPages;
+                document.getElementById('home-screen').style.display = 'none';
+                document.getElementById('reader-mode').style.display = 'block';
+                renderPage(pageNum);
+            } catch (err) {
+                alert("PDF load karne mein galti: " + err.message);
+            }
+        };
+        reader.readAsArrayBuffer(file);
     }
 
-    function renderPage(num) {
-        isRendering = true;
-        pdfDoc.getPage(num).then(page => {
-            const canvas = document.getElementById('pdf-render');
-            const ctx = canvas.getContext('2d');
-            const viewport = page.getViewport({scale: 1.5});
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
-            page.render({canvasContext: ctx, viewport: viewport}).promise.then(() => {
-                isRendering = false;
-                document.getElementById('cur_pg').textContent = num;
-            });
-        });
+    async function renderPage(num) {
+        rendering = true;
+        const page = await pdfDoc.getPage(num);
+        const canvas = document.getElementById('pdf-render');
+        const ctx = canvas.getContext('2d');
+        const viewport = page.getViewport({ scale: 1.5 });
+
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+        rendering = false;
+        document.getElementById('current').textContent = num;
     }
 
-    // Swipe Detection Logic
-    const wrapper = document.getElementById('canvas-wrapper');
-    wrapper.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; });
-    wrapper.addEventListener('touchend', e => { 
-        touchEndX = e.changedTouches[0].screenX;
-        handleSwipe();
-    });
+    // Swipe Feature (Left/Right)
+    const viewer = document.getElementById('reader-mode');
+    viewer.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, false);
+    viewer.addEventListener('touchend', e => {
+        let endX = e.changedTouches[0].clientX;
+        if (startX - endX > 50) movePage('next'); // Swipe Left -> Next
+        else if (endX - startX > 50) movePage('prev'); // Swipe Right -> Prev
+    }, false);
 
-    function handleSwipe() {
-        if (touchEndX < touchStartX - 50) changePage('next'); // Swipe Left -> Next
-        if (touchEndX > touchStartX + 50) changePage('prev'); // Swipe Right -> Prev
-    }
-
-    function changePage(dir) {
-        if (!pdfDoc || isRendering) return;
+    function movePage(dir) {
+        if (!pdfDoc || rendering) return;
         if (dir === 'next' && pageNum < pdfDoc.numPages) {
-            pageNum++; playSound(); renderPage(pageNum);
+            pageNum++; playFlip(); renderPage(pageNum);
         } else if (dir === 'prev' && pageNum > 1) {
-            pageNum--; playSound(); renderPage(pageNum);
+            pageNum--; playFlip(); renderPage(pageNum);
         }
     }
 
     function jumpToPage() {
-        const val = parseInt(document.getElementById('jump_num').value);
+        const val = parseInt(document.getElementById('jumpInput').value);
         if (val > 0 && val <= pdfDoc.numPages) {
-            pageNum = val; playSound(); renderPage(pageNum);
+            pageNum = val; playFlip(); renderPage(pageNum);
+        } else {
+            alert("Sahi page number daalein (1 se " + pdfDoc.numPages + ")");
         }
     }
 
-    function playSound() {
-        const sound = document.getElementById('pageSound');
-        sound.currentTime = 0;
-        sound.play().catch(e => console.log("Sound error: ", e));
+    function playFlip() {
+        const s = document.getElementById('flipSound');
+        s.currentTime = 0;
+        s.play().catch(() => {}); // Play only if user interacted
     }
 
-    // Tap for options
-    wrapper.addEventListener('click', e => {
-        const menu = document.getElementById('floating-options');
+    // Tap for Menu
+    document.getElementById('canvas-wrapper').addEventListener('click', (e) => {
+        const menu = document.getElementById('menu');
         menu.style.display = 'block';
-        menu.style.left = Math.min(e.clientX, window.innerWidth - 170) + 'px';
+        menu.style.left = Math.min(e.clientX, window.innerWidth - 200) + 'px';
         menu.style.top = Math.min(e.clientY, window.innerHeight - 200) + 'px';
     });
 
-    window.onclick = e => {
-        if (!e.target.closest('#canvas-wrapper') && !e.target.closest('#floating-options')) {
-            document.getElementById('floating-options').style.display = 'none';
+    // Hide Menu on click outside
+    window.onclick = (e) => {
+        if (!e.target.closest('#canvas-wrapper') && !e.target.closest('#menu')) {
+            document.getElementById('menu').style.display = 'none';
         }
-    }
+    };
 </script>
 </body>
 </html>
+
