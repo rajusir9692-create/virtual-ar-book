@@ -3,36 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=10.0, user-scalable=yes">
-    <title>AR Book Pro</title>
+    <title>AR Book Pro - Library Version</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <style>
         :root { --primary: #008BFF; }
         body { font-family: sans-serif; margin: 0; background: #1a1a1a; color: white; overflow-x: hidden; }
         
-        /* 20-Second Splash */
         #splash { position: fixed; inset: 0; background: #1a1a1a; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
         .intro-text { font-size: 28px; font-weight: bold; color: var(--primary); margin-top: 20px; }
 
-        /* Left/Right Arrows */
-        .nav-arrow { 
-            position: fixed; top: 50%; transform: translateY(-50%);
-            background: rgba(0, 139, 255, 0.4); color: white; border: none;
-            width: 60px; height: 100px; font-size: 40px;
-            z-index: 9000; cursor: pointer; display: flex; align-items: center; justify-content: center;
-            border-radius: 10px;
-        }
+        .nav-arrow { position: fixed; top: 55%; transform: translateY(-50%); background: rgba(0, 139, 255, 0.4); color: white; border: none; width: 50px; height: 80px; font-size: 35px; z-index: 9000; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         #prev-btn { left: 0; border-radius: 0 10px 10px 0; }
         #next-btn { right: 0; border-radius: 10px 0 0 10px; }
 
-        /* PDF Render Area - Pinch Zoom Enabled */
-        #viewer { 
-            width: 100vw; height: 90vh; overflow: auto; 
-            display: flex; justify-content: center; padding-top: 60px;
-            touch-action: pan-x pan-y pinch-zoom; /* Magic line for pinch-zoom */
-        }
-        canvas { background: white; box-shadow: 0 0 20px rgba(0,0,0,0.5); display: block; }
+        header { background: var(--primary); padding: 10px; position: fixed; top: 0; width: 100%; z-index: 8500; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; }
+        
+        #viewer-area { width: 100vw; height: 100vh; overflow: auto; display: flex; justify-content: center; align-items: flex-start; padding-top: 65px; box-sizing: border-box; touch-action: pinch-zoom; }
+        canvas { background: white; box-shadow: 0 0 20px rgba(0,0,0,0.5); display: block; max-width: 100%; height: auto; }
 
-        header { background: var(--primary); padding: 12px; position: fixed; top: 0; width: 100%; z-index: 8500; display: flex; justify-content: space-between; align-items: center; }
+        /* Library List Style */
+        #library-container { margin-top: 20px; width: 90%; max-width: 400px; text-align: left; }
+        .pdf-item { background: #333; padding: 12px; margin-bottom: 8px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-left: 4px solid var(--primary); }
+        .pdf-item:hover { background: #444; }
+
+        input#jumpInput { width: 45px; padding: 5px; border-radius: 4px; border: none; text-align: center; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -45,85 +39,101 @@
 <audio id="flipSound" src="https://www.soundjay.com/misc/sounds/page-flip-01a.mp3" preload="auto"></audio>
 
 <header id="top-bar" style="display:none;">
-    <div style="font-weight:bold; padding-left:10px;">AR BOOK PRO</div>
-    <div style="font-size:14px;">Pg: <span id="current">1</span> / <span id="total">0</span></div>
-    <button onclick="location.reload()" style="background:red; color:white; border:none; padding:6px 15px; margin-right:15px; border-radius:5px; font-weight:bold;">EXIT</button>
+    <div style="font-weight:bold;">AR BOOK</div>
+    <div style="display: flex; align-items: center; gap: 5px;">
+        <span id="current">1</span> / <span id="total">0</span>
+        <input type="number" id="jumpInput" placeholder="No.">
+        <button onclick="jumpToPage()" style="background:#000; color:white; border:none; padding:5px 8px; border-radius:4px;">GO</button>
+    </div>
+    <button onclick="closeBook()" style="background:#ff4444; color:white; border:none; padding:6px 12px; border-radius:5px; font-weight:bold;">BACK</button>
 </header>
 
 <div id="home-screen" style="height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
-    <button onclick="document.getElementById('pdf-file').click()" style="background:var(--primary); color:white; padding:22px 60px; border-radius:60px; border:none; font-size:24px; font-weight:bold; box-shadow: 0 10px 30px rgba(0,139,255,0.4);">OPEN PDF</button>
-    <input type="file" id="pdf-file" accept=".pdf" style="display:none" onchange="initPDF(event)">
-    <p style="margin-top:20px; color:#888;">Select your book to start reading</p>
+    <button onclick="document.getElementById('pdf-file').click()" style="background:var(--primary); color:white; padding:22px 50px; border-radius:60px; border:none; font-size:22px; font-weight:bold; box-shadow: 0 10px 30px rgba(0,139,255,0.4);">ADD PDF TO LIBRARY</button>
+    <input type="file" id="pdf-file" accept=".pdf" style="display:none" onchange="handleFileUpload(event)">
+    
+    <div id="library-container">
+        <h3 style="color: var(--primary); border-bottom: 1px solid #333; padding-bottom: 5px;">My Library</h3>
+        <div id="pdf-list"><p style="color:#666; font-size:14px;">No books added yet. Click above to add.</p></div>
+    </div>
 </div>
 
 <div id="reader-ui" style="display:none;">
     <button id="prev-btn" class="nav-arrow" onclick="prevPage()">&#8249;</button>
     <button id="next-btn" class="nav-arrow" onclick="nextPage()">&#8250;</button>
-    
-    <div id="viewer">
-        <canvas id="pdf-render"></canvas>
-    </div>
+    <div id="viewer-area"><canvas id="pdf-render"></canvas></div>
 </div>
 
 <script>
     const pdfjsLib = window['pdfjs-dist/build/pdf'];
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-    let pdfDoc = null, pageNum = 1;
+    let pdfDoc = null, pageNum = 1, library = [];
 
-    // 20 Second Intro Timer
     setTimeout(() => { document.getElementById('splash').style.display = 'none'; }, 20000);
 
-    async function initPDF(e) {
+    function handleFileUpload(e) {
         const file = e.target.files[0];
+        if(!file) return;
         const reader = new FileReader();
-        reader.onload = async function() {
+        reader.onload = function() {
             const data = new Uint8Array(this.result);
-            pdfDoc = await pdfjsLib.getDocument(data).promise;
-            document.getElementById('total').textContent = pdfDoc.numPages;
-            document.getElementById('home-screen').style.display = 'none';
-            document.getElementById('reader-ui').style.display = 'block';
-            document.getElementById('top-bar').style.display = 'flex';
-            renderPage(pageNum);
+            const book = { name: file.name, data: data };
+            library.push(book);
+            updateLibraryUI();
+            openBook(book.data);
         };
         reader.readAsArrayBuffer(file);
+    }
+
+    function updateLibraryUI() {
+        const list = document.getElementById('pdf-list');
+        list.innerHTML = "";
+        library.forEach((book, index) => {
+            const div = document.createElement('div');
+            div.className = "pdf-item";
+            div.innerHTML = `📄 ${book.name}`;
+            div.onclick = () => openBook(book.data);
+            list.appendChild(div);
+        });
+    }
+
+    async function openBook(data) {
+        pdfDoc = await pdfjsLib.getDocument(data).promise;
+        document.getElementById('total').textContent = pdfDoc.numPages;
+        document.getElementById('home-screen').style.display = 'none';
+        document.getElementById('reader-ui').style.display = 'block';
+        document.getElementById('top-bar').style.display = 'flex';
+        renderPage(pageNum);
     }
 
     async function renderPage(num) {
         const page = await pdfDoc.getPage(num);
         const canvas = document.getElementById('pdf-render');
         const ctx = canvas.getContext('2d');
-        
-        // Quality factor 2.0 for clear text on zoom
         const viewport = page.getViewport({ scale: 2.0 });
         canvas.height = viewport.height;
         canvas.width = viewport.width;
-
-        // Force Responsive CSS Width
-        canvas.style.width = "95vw";
-        canvas.style.height = "auto";
-
         await page.render({ canvasContext: ctx, viewport: viewport }).promise;
         document.getElementById('current').textContent = num;
-        
-        // Scroll back to top on page change
-        document.getElementById('viewer').scrollTop = 0;
+        document.getElementById('viewer-area').scrollTop = 0;
     }
 
-    function nextPage() {
-        if (pdfDoc && pageNum < pdfDoc.numPages) {
-            pageNum++; playSound(); renderPage(pageNum);
-        }
+    function jumpToPage() {
+        const val = parseInt(document.getElementById('jumpInput').value);
+        if (val > 0 && val <= pdfDoc.numPages) { pageNum = val; playSound(); renderPage(pageNum); }
     }
-    function prevPage() {
-        if (pdfDoc && pageNum > 1) {
-            pageNum--; playSound(); renderPage(pageNum);
-        }
+
+    function closeBook() {
+        document.getElementById('reader-ui').style.display = 'none';
+        document.getElementById('top-bar').style.display = 'none';
+        document.getElementById('home-screen').style.display = 'flex';
+        pageNum = 1;
     }
-    function playSound() {
-        const s = document.getElementById('flipSound');
-        s.currentTime = 0; s.play().catch(()=>{});
-    }
+
+    function nextPage() { if (pdfDoc && pageNum < pdfDoc.numPages) { pageNum++; playSound(); renderPage(pageNum); } }
+    function prevPage() { if (pdfDoc && pageNum > 1) { pageNum--; playSound(); renderPage(pageNum); } }
+    function playSound() { const s = document.getElementById('flipSound'); s.currentTime = 0; s.play().catch(()=>{}); }
 </script>
 </body>
 </html>
