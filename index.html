@@ -3,84 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AR Book</title>
+    <title>AR Book Pro</title>
     <link rel="manifest" href="manifest.json">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <style>
         :root { --primary: #008BFF; }
         body { font-family: sans-serif; margin: 0; background: #1a1a1a; color: white; overflow: hidden; }
         
-        /* Header & 3-Bar Sidebar */
-        header { background: var(--primary); padding: 15px; display: flex; justify-content: space-between; align-items: center; z-index: 1001; position: relative; }
-        #sidebar { position: fixed; left: -280px; top: 0; width: 280px; height: 100%; background: white; color: #333; z-index: 2000; transition: 0.3s; box-shadow: 2px 0 15px rgba(0,0,0,0.5); }
+        /* Sidebar & Overlay */
+        #sidebar { position: fixed; left: -280px; top: 0; width: 280px; height: 100%; background: white; color: #333; z-index: 9999; transition: 0.4s; box-shadow: 5px 0 20px rgba(0,0,0,0.5); overflow-y: auto; }
         #sidebar.active { left: 0; }
-        .side-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; }
+        .side-item { padding: 18px; border-bottom: 1px solid #eee; font-weight: bold; cursor: pointer; display: flex; align-items: center; }
+        #overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 9998; }
 
-        /* Login & Notifications */
-        #login-screen, #sub-overlay { position: fixed; inset: 0; background: white; color: #333; z-index: 5000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
-        .btn { background: var(--primary); color: white; padding: 12px 30px; border-radius: 25px; border: none; font-size: 16px; margin-top: 20px; }
+        /* Scanner Modal */
+        #qr-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 15px; z-index: 10001; text-align: center; color: #333; width: 80%; }
 
-        /* Reader UI */
-        #reader-mode { display: none; position: fixed; inset: 0; background: #222; z-index: 100; }
-        .top-nav { background: rgba(0,0,0,0.9); padding: 10px; display: flex; justify-content: space-around; align-items: center; }
-        canvas { max-width: 100%; max-height: 85vh; background: white; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        
-        /* Floating Menu */
-        #menu { display: none; position: fixed; background: white; color: black; border-radius: 12px; padding: 8px; z-index: 1500; min-width: 170px; box-shadow: 0 5px 20px rgba(0,0,0,0.4); }
-        .menu-item { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 14px; }
+        /* Reader UI & Jumper */
+        header { background: var(--primary); padding: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .top-nav { background: #000; padding: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
+        .jumper-input { width: 45px; padding: 8px; border-radius: 5px; border: none; text-align: center; font-weight: bold; }
+        .jump-btn { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; margin-left: 5px; }
+
+        #canvas-wrapper { height: 85vh; display: flex; align-items: center; justify-content: center; touch-action: none; overflow: hidden; }
+        canvas { max-width: 100%; max-height: 80vh; background: white; box-shadow: 0 0 20px rgba(0,0,0,0.8); }
+
+        #login-screen { position: fixed; inset: 0; background: white; color: #333; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
     </style>
 </head>
 <body>
 
-<audio id="flipSound" src="https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3" preload="auto"></audio>
+<audio id="flipSound" src="https://www.soundjay.com/misc/sounds/page-flip-01a.mp3" preload="auto"></audio>
 
-<div id="login-screen">
-    <img src="icon.png" width="100" style="border-radius: 50%;">
-    <h2>Welcome to AR Book</h2>
-    <input type="text" id="username" placeholder="Enter Name" style="padding:10px; width:80%; border-radius:5px; border:1px solid #ccc;">
-    <button class="btn" onclick="login()">Login & Start Free Trial</button>
+<div id="qr-modal">
+    <h3>Scan QR to Pay</h3>
+    <img src="qr-code.png" alt="QR Scanner" style="width: 100%; max-width: 200px; margin: 15px 0;">
+    <p style="font-size: 14px; color: #666;">After payment, send screenshot to admin.</p>
+    <button onclick="document.getElementById('qr-modal').style.display='none'" style="background:red; color:white; border:none; padding:10px 20px; border-radius:5px;">Close</button>
 </div>
 
+<div id="login-screen">
+    <img src="icon.png" width="100" style="border-radius: 50%; border: 3px solid var(--primary); margin-bottom: 20px;">
+    <h2>Start Your Learning</h2>
+    <input type="text" id="username" placeholder="Enter Name" style="padding:15px; width:80%; border-radius:10px; border:1px solid #ddd; margin-bottom: 20px;">
+    <button onclick="login()" style="background:var(--primary); color:white; padding:15px 50px; border:none; border-radius:30px; font-size:18px; font-weight:bold;">Login & Free Trial</button>
+</div>
+
+<div id="overlay" onclick="closeSidebar()"></div>
 <div id="sidebar">
-    <div style="background:var(--primary); color:white; padding:30px; text-align:center;">
+    <div style="background:var(--primary); color:white; padding:40px 20px; text-align:center;">
         <img src="icon.png" width="80" style="border-radius:50%; border:3px solid white;">
         <h3 id="user-display">User</h3>
     </div>
-    <div class="side-item" onclick="alert('Subscription: 7 Days Left')">📅 Subscription Status</div>
-    <div class="side-item" onclick="alert('UPI: santu@upi')">💳 Payment Method</div>
-    <div class="side-item" onclick="alert('Page Marked at: ' + (localStorage.getItem('markedPage') || 'None'))">📍 My Marks</div>
-    <div class="side-item" style="color:red;" onclick="localStorage.clear(); location.reload();">Logout</div>
+    <div class="side-item" onclick="alert('Trial Status: 7 Days Left')">📅 Subscription Info</div>
+    <div class="side-item" onclick="document.getElementById('qr-modal').style.display='block'; closeSidebar();">📸 QR Payment Scanner</div>
+    <div class="side-item" onclick="alert('Last Marked: Pg ' + (localStorage.getItem('markedPage') || 'None'))">📍 My Saved Marks</div>
+    <div class="side-item" style="color:red; margin-top:20px;" onclick="localStorage.clear(); location.reload();">🚪 Logout</div>
 </div>
 
 <header>
-    <div onclick="document.getElementById('sidebar').classList.add('active')" style="font-size:24px; cursor:pointer;">☰</div>
-    <div>AR Book</div>
-    <div style="font-size:12px;">Active Users: 1.2k</div>
+    <div onclick="openSidebar()" style="font-size:30px; cursor:pointer;">☰</div>
+    <div style="font-weight:bold; font-size:20px;">AR BOOK</div>
+    <div style="font-size:12px; background:rgba(255,255,255,0.2); padding:5px 10px; border-radius:15px;">1.2k Live</div>
 </header>
 
-<div id="home-screen" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:80vh; color:black; background:#f4f4f4;">
-    <button class="btn" style="padding:20px 50px; font-size:20px;" onclick="document.getElementById('pdf-file').click()">GO TO PDF</button>
+<div id="home-screen" style="height:80vh; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#f0f2f5;">
+    <button onclick="document.getElementById('pdf-file').click()" style="background:var(--primary); color:white; padding:20px 60px; border-radius:50px; border:none; font-size:22px; font-weight:bold; box-shadow: 0 10px 20px rgba(0,139,255,0.4);">OPEN PDF BOOK</button>
     <input type="file" id="pdf-file" accept=".pdf" style="display:none" onchange="initPDF(event)">
 </div>
 
-<div id="reader-mode">
+<div id="reader-mode" style="display:none; position:fixed; inset:0; background:#1a1a1a; z-index:100;">
     <div class="top-nav">
-        <span>Pg: <span id="current">1</span> / <span id="total">0</span></span>
+        <span style="font-size:18px; font-weight:bold;">📄 <span id="current">1</span> / <span id="total">0</span></span>
         <div>
-            <input type="number" id="jumpInput" style="width:40px; text-align:center;" placeholder="No.">
-            <button onclick="jumpToPage()" style="background:var(--primary); color:white; border:none; padding:5px 10px; border-radius:5px;">GO</button>
+            <input type="number" id="jumpInput" class="jumper-input" placeholder="No.">
+            <button onclick="jumpToPage()" class="jump-btn">JUMP</button>
         </div>
-        <button onclick="location.reload()" style="background:red; color:white; border:none; padding:5px 10px; border-radius:5px;">CLOSE</button>
+        <button onclick="location.reload()" style="background:#ff4444; color:white; border:none; padding:8px 15px; border-radius:5px;">EXIT</button>
     </div>
-    <div id="canvas-wrapper" style="height:90vh; display:flex; align-items:center; justify-content:center;" onclick="showMenu(event)">
+    <div id="canvas-wrapper">
         <canvas id="pdf-render"></canvas>
     </div>
-</div>
-
-<div id="menu">
-    <div class="menu-item" onclick="alert('Gemini AI Notes...')">✨ Gemini AI Notes</div>
-    <div class="menu-item" onclick="markPage()">📍 Mark This Page</div>
-    <div class="menu-item" onclick="alert('Copied!')">📄 Full Page Copy</div>
 </div>
 
 <script>
@@ -89,7 +92,6 @@
 
     let pdfDoc = null, pageNum = 1, rendering = false, startX = 0;
 
-    // Login Logic
     window.onload = () => {
         if(localStorage.getItem('isLoggedIn')) {
             document.getElementById('login-screen').style.display = 'none';
@@ -98,16 +100,18 @@
     }
 
     function login() {
-        const user = document.getElementById('username').value;
-        if(user) {
+        const name = document.getElementById('username').value;
+        if(name) {
             localStorage.setItem('isLoggedIn', 'true');
-            localStorage.setItem('username', user);
-            alert("Your 7-day free subscription has started. After that, a subscription will be required.");
+            localStorage.setItem('username', name);
+            alert("Welcome! Your 7-day free trial has started. Subscription required after 7 days.");
             location.reload();
         }
     }
 
-    // PDF Logic
+    function openSidebar() { document.getElementById('sidebar').classList.add('active'); document.getElementById('overlay').style.display = 'block'; }
+    function closeSidebar() { document.getElementById('sidebar').classList.remove('active'); document.getElementById('overlay').style.display = 'none'; }
+
     async function initPDF(e) {
         const file = e.target.files[0];
         const reader = new FileReader();
@@ -126,46 +130,38 @@
         const page = await pdfDoc.getPage(num);
         const canvas = document.getElementById('pdf-render');
         const ctx = canvas.getContext('2d');
-        const viewport = page.getViewport({ scale: 1.2 });
+        const viewport = page.getViewport({ scale: 1.5 });
         canvas.height = viewport.height; canvas.width = viewport.width;
         await page.render({ canvasContext: ctx, viewport: viewport }).promise;
         rendering = false;
         document.getElementById('current').textContent = num;
     }
 
-    // Swipe & Sound
-    document.addEventListener('touchstart', e => { startX = e.touches[0].clientX; });
-    document.addEventListener('touchend', e => {
+    // SWIPE + SOUND (100% Fixed)
+    const canvasWrap = document.getElementById('canvas-wrapper');
+    canvasWrap.addEventListener('touchstart', e => { startX = e.touches[0].clientX; });
+    canvasWrap.addEventListener('touchend', e => {
         let endX = e.changedTouches[0].clientX;
-        if (Math.abs(startX - endX) > 50) {
-            if (startX > endX && pageNum < pdfDoc.numPages) pageNum++;
-            else if (startX < endX && pageNum > 1) pageNum--;
-            document.getElementById('flipSound').play();
-            renderPage(pageNum);
+        if (Math.abs(startX - endX) > 60) {
+            const flip = document.getElementById('flipSound');
+            if (startX > endX && pageNum < pdfDoc.numPages) {
+                pageNum++; flip.play(); renderPage(pageNum);
+            } else if (startX < endX && pageNum > 1) {
+                pageNum--; flip.play(); renderPage(pageNum);
+            }
         }
     });
 
     function jumpToPage() {
         const val = parseInt(document.getElementById('jumpInput').value);
-        if (val > 0 && val <= pdfDoc.numPages) { pageNum = val; renderPage(pageNum); }
-    }
-
-    function showMenu(e) {
-        const menu = document.getElementById('menu');
-        menu.style.display = 'block';
-        menu.style.left = e.clientX + 'px'; menu.style.top = e.clientY + 'px';
-    }
-
-    function markPage() {
-        localStorage.setItem('markedPage', pageNum);
-        alert("Page " + pageNum + " marked successfully!");
-    }
-
-    // Close Sidebar on outside click
-    window.onclick = e => {
-        if (e.clientX > 280) document.getElementById('sidebar').classList.remove('active');
+        if (val > 0 && val <= pdfDoc.numPages) {
+            pageNum = val; 
+            document.getElementById('flipSound').play();
+            renderPage(pageNum);
+        } else {
+            alert("Please enter valid page number");
+        }
     }
 </script>
 </body>
 </html>
-
