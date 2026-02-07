@@ -10,107 +10,76 @@
         :root { --primary: #008BFF; }
         body { font-family: sans-serif; margin: 0; background: #1a1a1a; color: white; overflow: hidden; }
         
-        /* Sidebar & Overlay */
-        #sidebar { position: fixed; left: -280px; top: 0; width: 280px; height: 100%; background: white; color: #333; z-index: 9999; transition: 0.4s; box-shadow: 5px 0 20px rgba(0,0,0,0.5); overflow-y: auto; }
-        #sidebar.active { left: 0; }
-        .side-item { padding: 18px; border-bottom: 1px solid #eee; font-weight: bold; cursor: pointer; display: flex; align-items: center; }
-        #overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 9998; }
+        /* Intro Splash Screen */
+        #splash { position: fixed; inset: 0; background: #1a1a1a; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .intro-text { font-size: 24px; font-weight: bold; color: var(--primary); animation: fade 2s forwards; }
+        @keyframes fade { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
 
-        /* Scanner Modal */
-        #qr-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 15px; z-index: 10001; text-align: center; color: #333; width: 80%; }
-
-        /* Reader UI & Jumper */
-        header { background: var(--primary); padding: 12px; display: flex; justify-content: space-between; align-items: center; }
-        .top-nav { background: #000; padding: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
-        .jumper-input { width: 45px; padding: 8px; border-radius: 5px; border: none; text-align: center; font-weight: bold; }
-        .jump-btn { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; margin-left: 5px; }
-
-        #canvas-wrapper { height: 85vh; display: flex; align-items: center; justify-content: center; touch-action: none; overflow: hidden; }
-        canvas { max-width: 100%; max-height: 80vh; background: white; box-shadow: 0 0 20px rgba(0,0,0,0.8); }
-
-        #login-screen { position: fixed; inset: 0; background: white; color: #333; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
+        /* Reader Layout */
+        header { background: var(--primary); padding: 10px; display: flex; justify-content: space-between; align-items: center; z-index: 1000; }
+        .top-nav { background: #000; padding: 10px; display: flex; justify-content: space-between; align-items: center; gap: 5px; }
+        .btn-icon { background: #333; color: white; border: none; padding: 8px 12px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        
+        #canvas-wrapper { height: 85vh; width: 100vw; overflow: auto; display: flex; justify-content: center; align-items: flex-start; position: relative; padding-top: 10px; }
+        canvas { box-shadow: 0 0 20px rgba(0,0,0,0.5); background: white; cursor: pointer; }
+        
+        /* Selection Layer for Manual Copy */
+        .textLayer { position: absolute; left: 0; top: 0; right: 0; bottom: 0; color: transparent; line-height: 1; white-space: pre; cursor: text; }
+        
+        /* Modal for Page Copy */
+        #copy-modal { display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: white; color: #333; padding: 15px 30px; border-radius: 30px; z-index: 2000; box-shadow: 0 5px 20px rgba(0,0,0,0.5); }
     </style>
 </head>
 <body>
 
+<div id="splash">
+    <img src="icon.png" width="100" style="border-radius: 50%; margin-bottom: 20px;">
+    <div class="intro-text">Created by Rajesh Mahanto</div>
+</div>
+
 <audio id="flipSound" src="https://www.soundjay.com/misc/sounds/page-flip-01a.mp3" preload="auto"></audio>
 
-<div id="qr-modal">
-    <h3>Scan QR to Pay</h3>
-    <img src="qr-code.png" alt="QR Scanner" style="width: 100%; max-width: 200px; margin: 15px 0;">
-    <p style="font-size: 14px; color: #666;">After payment, send screenshot to admin.</p>
-    <button onclick="document.getElementById('qr-modal').style.display='none'" style="background:red; color:white; border:none; padding:10px 20px; border-radius:5px;">Close</button>
-</div>
-
-<div id="login-screen">
-    <img src="icon.png" width="100" style="border-radius: 50%; border: 3px solid var(--primary); margin-bottom: 20px;">
-    <h2>Start Your Learning</h2>
-    <input type="text" id="username" placeholder="Enter Name" style="padding:15px; width:80%; border-radius:10px; border:1px solid #ddd; margin-bottom: 20px;">
-    <button onclick="login()" style="background:var(--primary); color:white; padding:15px 50px; border:none; border-radius:30px; font-size:18px; font-weight:bold;">Login & Free Trial</button>
-</div>
-
-<div id="overlay" onclick="closeSidebar()"></div>
-<div id="sidebar">
-    <div style="background:var(--primary); color:white; padding:40px 20px; text-align:center;">
-        <img src="icon.png" width="80" style="border-radius:50%; border:3px solid white;">
-        <h3 id="user-display">User</h3>
-    </div>
-    <div class="side-item" onclick="alert('Trial Status: 7 Days Left')">📅 Subscription Info</div>
-    <div class="side-item" onclick="document.getElementById('qr-modal').style.display='block'; closeSidebar();">📸 QR Payment Scanner</div>
-    <div class="side-item" onclick="alert('Last Marked: Pg ' + (localStorage.getItem('markedPage') || 'None'))">📍 My Saved Marks</div>
-    <div class="side-item" style="color:red; margin-top:20px;" onclick="localStorage.clear(); location.reload();">🚪 Logout</div>
-</div>
-
 <header>
-    <div onclick="openSidebar()" style="font-size:30px; cursor:pointer;">☰</div>
-    <div style="font-weight:bold; font-size:20px;">AR BOOK</div>
-    <div style="font-size:12px; background:rgba(255,255,255,0.2); padding:5px 10px; border-radius:15px;">1.2k Live</div>
+    <div style="font-weight:bold;">AR BOOK</div>
+    <div style="font-size: 14px;">Free Access</div>
 </header>
 
-<div id="home-screen" style="height:80vh; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#f0f2f5;">
-    <button onclick="document.getElementById('pdf-file').click()" style="background:var(--primary); color:white; padding:20px 60px; border-radius:50px; border:none; font-size:22px; font-weight:bold; box-shadow: 0 10px 20px rgba(0,139,255,0.4);">OPEN PDF BOOK</button>
+<div class="top-nav">
+    <span>Pg: <span id="current">1</span></span>
+    <div>
+        <button class="btn-icon" onclick="changeZoom(-0.2)">-</button>
+        <button class="btn-icon" onclick="changeZoom(0.2)">+</button>
+    </div>
+    <div>
+        <input type="number" id="jumpInput" style="width:40px; border-radius:5px; border:none; padding:5px; text-align:center;" placeholder="No.">
+        <button class="btn-icon" style="background:var(--primary)" onclick="jumpToPage()">GO</button>
+    </div>
+    <button class="btn-icon" style="background:red" onclick="location.reload()">EXIT</button>
+</div>
+
+<div id="home-screen" style="height:80vh; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+    <button onclick="document.getElementById('pdf-file').click()" style="background:var(--primary); color:white; padding:20px 50px; border-radius:50px; border:none; font-size:20px; font-weight:bold;">OPEN PDF</button>
     <input type="file" id="pdf-file" accept=".pdf" style="display:none" onchange="initPDF(event)">
 </div>
 
-<div id="reader-mode" style="display:none; position:fixed; inset:0; background:#1a1a1a; z-index:100;">
-    <div class="top-nav">
-        <span style="font-size:18px; font-weight:bold;">📄 <span id="current">1</span> / <span id="total">0</span></span>
-        <div>
-            <input type="number" id="jumpInput" class="jumper-input" placeholder="No.">
-            <button onclick="jumpToPage()" class="jump-btn">JUMP</button>
-        </div>
-        <button onclick="location.reload()" style="background:#ff4444; color:white; border:none; padding:8px 15px; border-radius:5px;">EXIT</button>
+<div id="canvas-wrapper">
+    <div id="pdf-container" style="position: relative;">
+        <canvas id="pdf-render" onclick="showCopyOption()"></canvas>
     </div>
-    <div id="canvas-wrapper">
-        <canvas id="pdf-render"></canvas>
-    </div>
+</div>
+
+<div id="copy-modal" onclick="copyFullPage()">
+    <b>📄 Click to Copy Full Page Content</b>
 </div>
 
 <script>
     const pdfjsLib = window['pdfjs-dist/build/pdf'];
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-    let pdfDoc = null, pageNum = 1, rendering = false, startX = 0;
+    let pdfDoc = null, pageNum = 1, zoomScale = 1.2, startX = 0;
 
-    window.onload = () => {
-        if(localStorage.getItem('isLoggedIn')) {
-            document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('user-display').textContent = localStorage.getItem('username');
-        }
-    }
-
-    function login() {
-        const name = document.getElementById('username').value;
-        if(name) {
-            localStorage.setItem('isLoggedIn', 'true');
-            localStorage.setItem('username', name);
-            alert("Welcome! Your 7-day free trial has started. Subscription required after 7 days.");
-            location.reload();
-        }
-    }
-
-    function openSidebar() { document.getElementById('sidebar').classList.add('active'); document.getElementById('overlay').style.display = 'block'; }
-    function closeSidebar() { document.getElementById('sidebar').classList.remove('active'); document.getElementById('overlay').style.display = 'none'; }
+    // 2-Second Splash Screen
+    setTimeout(() => { document.getElementById('splash').style.display = 'none'; }, 2500);
 
     async function initPDF(e) {
         const file = e.target.files[0];
@@ -118,49 +87,67 @@
         reader.onload = async function() {
             const data = new Uint8Array(this.result);
             pdfDoc = await pdfjsLib.getDocument(data).promise;
-            document.getElementById('total').textContent = pdfDoc.numPages;
-            document.getElementById('reader-mode').style.display = 'block';
+            document.getElementById('home-screen').style.display = 'none';
             renderPage(pageNum);
         };
         reader.readAsArrayBuffer(file);
     }
 
     async function renderPage(num) {
-        rendering = true;
         const page = await pdfDoc.getPage(num);
         const canvas = document.getElementById('pdf-render');
         const ctx = canvas.getContext('2d');
-        const viewport = page.getViewport({ scale: 1.5 });
-        canvas.height = viewport.height; canvas.width = viewport.width;
+        const viewport = page.getViewport({ scale: zoomScale });
+
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
         await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-        rendering = false;
         document.getElementById('current').textContent = num;
     }
 
-    // SWIPE + SOUND (100% Fixed)
-    const canvasWrap = document.getElementById('canvas-wrapper');
-    canvasWrap.addEventListener('touchstart', e => { startX = e.touches[0].clientX; });
-    canvasWrap.addEventListener('touchend', e => {
-        let endX = e.changedTouches[0].clientX;
-        if (Math.abs(startX - endX) > 60) {
-            const flip = document.getElementById('flipSound');
-            if (startX > endX && pageNum < pdfDoc.numPages) {
-                pageNum++; flip.play(); renderPage(pageNum);
-            } else if (startX < endX && pageNum > 1) {
-                pageNum--; flip.play(); renderPage(pageNum);
-            }
-        }
-    });
+    function changeZoom(val) {
+        zoomScale += val;
+        if(zoomScale < 0.5) zoomScale = 0.5;
+        renderPage(pageNum);
+    }
 
     function jumpToPage() {
         const val = parseInt(document.getElementById('jumpInput').value);
         if (val > 0 && val <= pdfDoc.numPages) {
-            pageNum = val; 
-            document.getElementById('flipSound').play();
-            renderPage(pageNum);
-        } else {
-            alert("Please enter valid page number");
+            pageNum = val; playFlip(); renderPage(pageNum);
         }
+    }
+
+    // Swipe + Sound
+    document.addEventListener('touchstart', e => { startX = e.touches[0].clientX; });
+    document.addEventListener('touchend', e => {
+        let endX = e.changedTouches[0].clientX;
+        if (Math.abs(startX - endX) > 70) {
+            if (startX > endX && pageNum < pdfDoc.numPages) pageNum++;
+            else if (startX < endX && pageNum > 1) pageNum--;
+            playFlip(); renderPage(pageNum);
+        }
+    });
+
+    function playFlip() {
+        const audio = document.getElementById('flipSound');
+        audio.currentTime = 0; audio.play().catch(()=>{});
+    }
+
+    function showCopyOption() {
+        const modal = document.getElementById('copy-modal');
+        modal.style.display = 'block';
+        setTimeout(() => { modal.style.display = 'none'; }, 3000);
+    }
+
+    async function copyFullPage() {
+        const page = await pdfDoc.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        const text = textContent.items.map(item => item.str).join(' ');
+        navigator.clipboard.writeText(text);
+        alert("Full page text copied to clipboard!");
+        document.getElementById('copy-modal').style.display = 'none';
     }
 </script>
 </body>
