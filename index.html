@@ -8,39 +8,34 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <style>
         :root { --primary: #008BFF; }
-        body { font-family: sans-serif; margin: 0; background: #1a1a1a; color: white; overflow: hidden; }
+        body { font-family: sans-serif; margin: 0; background: #1a1a1a; color: white; overflow: hidden; touch-action: none; }
         
-        /* Intro Splash Screen */
+        /* 10-Second Splash Screen */
         #splash { position: fixed; inset: 0; background: #1a1a1a; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        .intro-text { font-size: 24px; font-weight: bold; color: var(--primary); animation: fade 2s forwards; }
-        @keyframes fade { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
+        .intro-text { font-size: 26px; font-weight: bold; color: var(--primary); animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
 
-        /* Reader Layout */
+        /* Reader UI */
         header { background: var(--primary); padding: 10px; display: flex; justify-content: space-between; align-items: center; z-index: 1000; }
         .top-nav { background: #000; padding: 10px; display: flex; justify-content: space-between; align-items: center; gap: 5px; }
-        .btn-icon { background: #333; color: white; border: none; padding: 8px 12px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        .btn-icon { background: #333; color: white; border: none; padding: 8px 12px; border-radius: 5px; font-weight: bold; }
         
-        #canvas-wrapper { height: 85vh; width: 100vw; overflow: auto; display: flex; justify-content: center; align-items: flex-start; position: relative; padding-top: 10px; }
-        canvas { box-shadow: 0 0 20px rgba(0,0,0,0.5); background: white; cursor: pointer; }
-        
-        /* Selection Layer for Manual Copy */
-        .textLayer { position: absolute; left: 0; top: 0; right: 0; bottom: 0; color: transparent; line-height: 1; white-space: pre; cursor: text; }
-        
-        /* Modal for Page Copy */
-        #copy-modal { display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: white; color: #333; padding: 15px 30px; border-radius: 30px; z-index: 2000; box-shadow: 0 5px 20px rgba(0,0,0,0.5); }
+        #canvas-wrapper { height: 85vh; width: 100vw; overflow: auto; display: flex; justify-content: center; align-items: flex-start; position: relative; scroll-behavior: smooth; }
+        canvas { box-shadow: 0 0 20px rgba(0,0,0,0.5); background: white; transform-origin: top left; }
     </style>
 </head>
 <body>
 
 <div id="splash">
-    <img src="icon.png" width="100" style="border-radius: 50%; margin-bottom: 20px;">
-    <div class="intro-text">Created by Rajesh Mahanto</div>
+    <img src="icon.png" width="120" style="border-radius: 50%; margin-bottom: 25px; border: 3px solid var(--primary);">
+    <div class="intro-text">Created by Rajesh Mohanta</div>
+    <p style="color: #666; margin-top: 10px;">Please wait, app is loading...</p>
 </div>
 
 <audio id="flipSound" src="https://www.soundjay.com/misc/sounds/page-flip-01a.mp3" preload="auto"></audio>
 
 <header>
-    <div style="font-weight:bold;">AR BOOK</div>
+    <div style="font-weight:bold;">AR BOOK PRO</div>
     <div style="font-size: 14px;">Free Access</div>
 </header>
 
@@ -63,23 +58,17 @@
 </div>
 
 <div id="canvas-wrapper">
-    <div id="pdf-container" style="position: relative;">
-        <canvas id="pdf-render" onclick="showCopyOption()"></canvas>
-    </div>
-</div>
-
-<div id="copy-modal" onclick="copyFullPage()">
-    <b>📄 Click to Copy Full Page Content</b>
+    <canvas id="pdf-render"></canvas>
 </div>
 
 <script>
     const pdfjsLib = window['pdfjs-dist/build/pdf'];
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-    let pdfDoc = null, pageNum = 1, zoomScale = 1.2, startX = 0;
+    let pdfDoc = null, pageNum = 1, zoomScale = 1.0, startX = 0, initialPinchDist = null;
 
-    // 2-Second Splash Screen
-    setTimeout(() => { document.getElementById('splash').style.display = 'none'; }, 2500);
+    // 10-Second Splash Screen Fix
+    setTimeout(() => { document.getElementById('splash').style.display = 'none'; }, 10000);
 
     async function initPDF(e) {
         const file = e.target.files[0];
@@ -108,9 +97,42 @@
 
     function changeZoom(val) {
         zoomScale += val;
-        if(zoomScale < 0.5) zoomScale = 0.5;
+        if(zoomScale < 1.0) zoomScale = 1.0;
         renderPage(pageNum);
     }
+
+    // Pinch-to-Zoom Manual Logic
+    const wrapper = document.getElementById('canvas-wrapper');
+    wrapper.addEventListener('touchmove', e => {
+        if (e.touches.length === 2) {
+            let dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+            if (initialPinchDist === null) {
+                initialPinchDist = dist;
+            } else {
+                let diff = dist / initialPinchDist;
+                zoomScale *= diff;
+                if(zoomScale < 1.0) zoomScale = 1.0;
+                if(zoomScale > 4.0) zoomScale = 4.0;
+                initialPinchDist = dist;
+                renderPage(pageNum);
+            }
+        }
+    });
+    wrapper.addEventListener('touchend', () => { initialPinchDist = null; });
+
+    // Swipe with Zoom Protection
+    document.addEventListener('touchstart', e => { startX = e.touches[0].clientX; });
+    document.addEventListener('touchend', e => {
+        // SWIPE ONLY WORKS IF ZOOM IS NORMAL (1.0)
+        if (zoomScale > 1.05) return; 
+
+        let endX = e.changedTouches[0].clientX;
+        if (Math.abs(startX - endX) > 80) {
+            if (startX > endX && pageNum < pdfDoc.numPages) pageNum++;
+            else if (startX < endX && pageNum > 1) pageNum--;
+            playFlip(); renderPage(pageNum);
+        }
+    });
 
     function jumpToPage() {
         const val = parseInt(document.getElementById('jumpInput').value);
@@ -119,35 +141,9 @@
         }
     }
 
-    // Swipe + Sound
-    document.addEventListener('touchstart', e => { startX = e.touches[0].clientX; });
-    document.addEventListener('touchend', e => {
-        let endX = e.changedTouches[0].clientX;
-        if (Math.abs(startX - endX) > 70) {
-            if (startX > endX && pageNum < pdfDoc.numPages) pageNum++;
-            else if (startX < endX && pageNum > 1) pageNum--;
-            playFlip(); renderPage(pageNum);
-        }
-    });
-
     function playFlip() {
         const audio = document.getElementById('flipSound');
         audio.currentTime = 0; audio.play().catch(()=>{});
-    }
-
-    function showCopyOption() {
-        const modal = document.getElementById('copy-modal');
-        modal.style.display = 'block';
-        setTimeout(() => { modal.style.display = 'none'; }, 3000);
-    }
-
-    async function copyFullPage() {
-        const page = await pdfDoc.getPage(pageNum);
-        const textContent = await page.getTextContent();
-        const text = textContent.items.map(item => item.str).join(' ');
-        navigator.clipboard.writeText(text);
-        alert("Full page text copied to clipboard!");
-        document.getElementById('copy-modal').style.display = 'none';
     }
 </script>
 </body>
