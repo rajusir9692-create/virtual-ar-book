@@ -4,84 +4,110 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AR Book</title>
-    <link rel="manifest" href="manifest.json">
     <style>
-        :root { --primary: #008BFF; --dark: #333; }
+        :root { --primary: #008BFF; }
         body { font-family: sans-serif; margin: 0; background: #f4f4f4; }
         
-        /* Login Page Overlay */
-        #login-screen { position: fixed; inset: 0; background: white; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .btn { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-top: 10px; }
-
         /* Header & Sidebar */
-        header { background: var(--primary); color: white; padding: 15px; display: flex; align-items: center; }
-        .menu-icon { font-size: 24px; cursor: pointer; margin-right: 15px; }
-        
-        #sidebar { position: fixed; left: -250px; top: 0; width: 250px; height: 100%; background: white; box-shadow: 2px 0 5px rgba(0,0,0,0.2); transition: 0.3s; z-index: 999; }
+        header { background: var(--primary); color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+        #sidebar { position: fixed; left: -280px; top: 0; width: 280px; height: 100%; background: white; z-index: 999; transition: 0.3s; box-shadow: 2px 0 10px rgba(0,0,0,0.2); }
         #sidebar.active { left: 0; }
-        .profile-section { padding: 20px; background: #eee; text-align: center; }
-        .profile-section img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; }
-        .menu-items { padding: 10px; }
-        .menu-items div { padding: 15px; border-bottom: 1px solid #ddd; cursor: pointer; }
 
-        /* Main Content */
-        .content { padding: 20px; }
+        /* Reader Mode */
+        #reader-mode { display: none; background: white; height: 100vh; width: 100vw; position: fixed; top: 0; left: 0; z-index: 200; }
+        .pdf-canvas { width: 100%; height: 80%; background: #333; overflow: hidden; position: relative; cursor: pointer; }
+        
+        /* Floating Menu on Tap */
+        #floating-options { display: none; position: absolute; background: white; border-radius: 12px; box-shadow: 0 5px 25px rgba(0,0,0,0.4); padding: 10px; z-index: 300; min-width: 180px; }
+        .opt-btn { display: block; width: 100%; padding: 12px; border: none; background: none; text-align: left; cursor: pointer; border-bottom: 1px solid #eee; font-size: 14px; }
+        .opt-btn:last-child { border: none; }
+        
+        /* Page Controls in Menu */
+        .page-nav { display: flex; justify-content: space-between; padding: 5px; background: #f0f8ff; border-radius: 8px; margin-bottom: 5px; }
+        .nav-btn { background: var(--primary); color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer; flex: 1; margin: 2px; }
     </style>
 </head>
 <body>
 
-<div id="login-screen">
-    <img src="icon.png" style="width: 100px; border-radius: 20px;">
-    <h2>AR Book Login</h2>
-    <input type="text" placeholder="Username" id="user" style="padding: 8px; margin-bottom: 5px;">
-    <button class="btn" onclick="startApp()">Login & Allow Permissions</button>
-</div>
-
-<div id="sidebar">
-    <div class="profile-section">
-        <img src="icon.png" alt="User Profile">
-        <h3 id="display-name">Santu</h3>
-    </div>
-    <div class="menu-items">
-        <div onclick="alert('Opening Notes...')">📝 My Notes</div>
-        <div onclick="alert('Settings...')">⚙️ Settings</div>
-        <div onclick="alert('UPI ID: santu@upi')">💳 Payment (UPI)</div>
-        <div onclick="location.reload()">🔄 Refresh App</div>
-    </div>
-</div>
+<audio id="pageSound" src="https://www.soundjay.com/misc/sounds/page-flip-01a.mp3" preload="auto"></audio>
 
 <header>
-    <div class="menu-icon" onclick="toggleSidebar()">☰</div>
+    <div onclick="document.getElementById('sidebar').classList.toggle('active')">☰</div>
     <div>AR Book</div>
+    <div style="font-size: 12px;">Live Users: 1,248</div>
 </header>
 
-<div class="content">
-    <h3>Welcome to AR Book</h3>
-    <p>Aapka AR content yahan load hoga...</p>
-    <div id="notes-area">
-        <textarea placeholder="Write your notes here..." style="width: 100%; height: 100px;"></textarea>
+<div id="sidebar">
+    <div style="padding:20px; background:#eef7ff; text-align:center;">
+        <img src="icon.png" style="width:80px; border-radius:50%;">
+        <h3>AR Book</h3> </div>
+    <div style="padding:20px;">
+        <div onclick="alert('UPI ID: santu@upi')">💳 Payment & Subscription</div>
+        <div onclick="alert('Feature Coming Soon')">👥 User Activity Log</div>
     </div>
+</div>
+
+<div id="home-screen" style="display:flex; height:80vh; align-items:center; justify-content:center;">
+    <button onclick="document.getElementById('fileInput').click()" style="background:var(--primary); color:white; padding:20px 40px; border-radius:50px; font-size:20px; border:none;">GO TO PDF</button>
+    <input type="file" id="fileInput" accept="application/pdf" style="display:none" onchange="openReader()">
+</div>
+
+<div id="reader-mode">
+    <div style="padding:10px; background:#eee; display:flex; justify-content:space-between;">
+        <input type="number" id="pgNum" placeholder="Page" style="width:60px;">
+        <button onclick="closeReader()">✖ Close</button>
+    </div>
+    <div class="pdf-canvas" onclick="showOptions(event)">
+        <div style="color:white; text-align:center; padding-top:100px;">Book Screen (Tap for Options)</div>
+    </div>
+</div>
+
+<div id="floating-options">
+    <div class="page-nav">
+        <button class="nav-btn" onclick="changePage('prev')">⬅ Prev</button>
+        <button class="nav-btn" onclick="changePage('next')">Next ➡</button>
+    </div>
+    <button class="opt-btn" onclick="alert('Gemini AI is creating notes...')">✨ Make Notes (Gemini)</button>
+    <button class="opt-btn" onclick="alert('Full page text copied!')">📄 Full Page Copy</button>
+    <button class="opt-btn" onclick="alert('Manual selection mode ON')">🖐️ Manual Copy</button>
 </div>
 
 <script>
-    function toggleSidebar() {
-        document.getElementById('sidebar').classList.toggle('active');
+    function openReader() {
+        document.getElementById('reader-mode').style.display = 'block';
     }
 
-    function startApp() {
-        // Permission simulation
-        confirm("Allow Camera and Storage permissions for AR Book?");
-        document.getElementById('login-screen').style.display = 'none';
-        localStorage.setItem('isLoggedIn', 'true');
+    function closeReader() {
+        document.getElementById('reader-mode').style.display = 'none';
     }
 
-    // Menu band karne ke liye jab bahar click ho
+    function showOptions(e) {
+        let menu = document.getElementById('floating-options');
+        menu.style.display = 'block';
+        menu.style.left = e.pageX + 'px';
+        menu.style.top = e.pageY + 'px';
+    }
+
+    // Page Change with Sound
+    function changePage(dir) {
+        // Play Sound
+        const sound = document.getElementById('pageSound');
+        sound.currentTime = 0;
+        sound.play();
+
+        if(dir === 'next') {
+            console.log("Next Page Loaded");
+        } else {
+            console.log("Previous Page Loaded");
+        }
+    }
+
+    // Close menu when clicking away
     window.onclick = function(event) {
-        if (!event.target.matches('.menu-icon') && !event.target.closest('#sidebar')) {
-            document.getElementById('sidebar').classList.remove('active');
+        if (!event.target.closest('.pdf-canvas') && !event.target.closest('#floating-options')) {
+            document.getElementById('floating-options').style.display = 'none';
         }
     }
 </script>
-
 </body>
 </html>
