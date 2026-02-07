@@ -1,6 +1,6 @@
 {
-  "name": "RAI Tutor",
-  "short_name": "RAI",
+  "name": "AR Book",
+  "short_name": "ARBook",
   "start_url": "index.html",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -8,9 +8,15 @@
   "icons": [
     {
       "src": "icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }
