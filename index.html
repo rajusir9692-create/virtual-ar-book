@@ -20,8 +20,9 @@
         .top-nav { background: #000; padding: 10px; display: flex; justify-content: space-between; align-items: center; gap: 5px; }
         .btn-icon { background: #333; color: white; border: none; padding: 8px 12px; border-radius: 5px; font-weight: bold; }
         
-        #canvas-wrapper { height: 85vh; width: 100vw; overflow: auto; display: flex; justify-content: center; align-items: flex-start; position: relative; scroll-behavior: smooth; }
-        canvas { box-shadow: 0 0 20px rgba(0,0,0,0.5); background: white; transform-origin: top left; }
+        /* Zoom Scroll Fix */
+        #canvas-wrapper { height: 85vh; width: 100vw; overflow: auto; display: flex; justify-content: center; align-items: flex-start; position: relative; -webkit-overflow-scrolling: touch; }
+        canvas { box-shadow: 0 0 20px rgba(0,0,0,0.5); background: white; transform-origin: top left; transition: transform 0.1s; }
     </style>
 </head>
 <body>
@@ -29,7 +30,7 @@
 <div id="splash">
     <img src="icon.png" width="120" style="border-radius: 50%; margin-bottom: 25px; border: 3px solid var(--primary);">
     <div class="intro-text">Created by Rajesh Mohanta</div>
-    <p style="color: #666; margin-top: 10px;">Please wait, app is loading...</p>
+    <p style="color: #666; margin-top: 10px;">Application is starting...</p>
 </div>
 
 <audio id="flipSound" src="https://www.soundjay.com/misc/sounds/page-flip-01a.mp3" preload="auto"></audio>
@@ -65,9 +66,9 @@
     const pdfjsLib = window['pdfjs-dist/build/pdf'];
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-    let pdfDoc = null, pageNum = 1, zoomScale = 1.0, startX = 0, initialPinchDist = null;
+    let pdfDoc = null, pageNum = 1, zoomScale = 1.0, startX = 0, startY = 0;
 
-    // 10-Second Splash Screen Fix
+    // 10-Second Splash
     setTimeout(() => { document.getElementById('splash').style.display = 'none'; }, 10000);
 
     async function initPDF(e) {
@@ -101,38 +102,33 @@
         renderPage(pageNum);
     }
 
-    // Pinch-to-Zoom Manual Logic
+    // Smart Swipe Protection
     const wrapper = document.getElementById('canvas-wrapper');
-    wrapper.addEventListener('touchmove', e => {
-        if (e.touches.length === 2) {
-            let dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
-            if (initialPinchDist === null) {
-                initialPinchDist = dist;
-            } else {
-                let diff = dist / initialPinchDist;
-                zoomScale *= diff;
-                if(zoomScale < 1.0) zoomScale = 1.0;
-                if(zoomScale > 4.0) zoomScale = 4.0;
-                initialPinchDist = dist;
-                renderPage(pageNum);
-            }
-        }
-    });
-    wrapper.addEventListener('touchend', () => { initialPinchDist = null; });
+    
+    wrapper.addEventListener('touchstart', e => { 
+        startX = e.touches[0].clientX; 
+        startY = e.touches[0].clientY;
+    }, {passive: true});
 
-    // Swipe with Zoom Protection
-    document.addEventListener('touchstart', e => { startX = e.touches[0].clientX; });
-    document.addEventListener('touchend', e => {
-        // SWIPE ONLY WORKS IF ZOOM IS NORMAL (1.0)
-        if (zoomScale > 1.05) return; 
+    wrapper.addEventListener('touchend', e => {
+        // AGAR ZOOM 1.0 SE BADA HAI, TOH SWIPE DISABLE KAR DO
+        if (zoomScale > 1.1) return; 
 
         let endX = e.changedTouches[0].clientX;
-        if (Math.abs(startX - endX) > 80) {
-            if (startX > endX && pageNum < pdfDoc.numPages) pageNum++;
-            else if (startX < endX && pageNum > 1) pageNum--;
-            playFlip(); renderPage(pageNum);
+        let endY = e.changedTouches[0].clientY;
+        
+        let diffX = startX - endX;
+        let diffY = startY - endY;
+
+        // Sirf horizontal swipe ko check karein
+        if (Math.abs(diffX) > 80 && Math.abs(diffY) < 100) {
+            if (diffX > 0 && pageNum < pdfDoc.numPages) {
+                pageNum++; playFlip(); renderPage(pageNum);
+            } else if (diffX < 0 && pageNum > 1) {
+                pageNum--; playFlip(); renderPage(pageNum);
+            }
         }
-    });
+    }, {passive: true});
 
     function jumpToPage() {
         const val = parseInt(document.getElementById('jumpInput').value);
